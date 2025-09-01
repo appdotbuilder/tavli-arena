@@ -1,19 +1,37 @@
+import { db } from '../db';
+import { matchesTable, usersTable } from '../db/schema';
 import { type CreateMatchInput, type Match } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export const createMatch = async (input: CreateMatchInput): Promise<Match> => {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is creating a new match with specified variant and mode,
-  // initializing game state, and persisting it in the database.
-  return Promise.resolve({
-    id: 0,
-    variant: input.variant,
-    mode: input.mode,
-    status: 'waiting',
-    white_player_id: input.white_player_id,
-    black_player_id: null, // Will be filled when someone joins
-    current_player_color: 'white',
-    winner_color: null,
-    created_at: new Date(),
-    updated_at: new Date()
-  });
+  try {
+    // Verify the white player exists first to prevent foreign key constraint violation
+    const whitePlayer = await db.select()
+      .from(usersTable)
+      .where(eq(usersTable.id, input.white_player_id))
+      .execute();
+
+    if (whitePlayer.length === 0) {
+      throw new Error(`User with id ${input.white_player_id} does not exist`);
+    }
+
+    // Insert match record
+    const result = await db.insert(matchesTable)
+      .values({
+        variant: input.variant,
+        mode: input.mode,
+        white_player_id: input.white_player_id,
+        status: 'waiting',
+        current_player_color: 'white',
+        black_player_id: null,
+        winner_color: null
+      })
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Match creation failed:', error);
+    throw error;
+  }
 };

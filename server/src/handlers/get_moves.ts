@@ -1,20 +1,21 @@
+import { db } from '../db';
+import { movesTable } from '../db/schema';
 import { type Move } from '../schema';
+import { eq, asc } from 'drizzle-orm';
 
 export const getMoves = async (matchId: number): Promise<Move[]> => {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is fetching all moves for a specific match
-  // ordered by turn number and creation time for move history display.
-  return Promise.resolve([
-    {
-      id: 1,
-      match_id: matchId,
-      player_color: 'white',
-      from_point: 24,
-      to_point: 21,
-      dice_value: 3,
-      move_type: 'move',
-      turn_number: 1,
-      created_at: new Date()
-    }
-  ]);
+  try {
+    // Fetch all moves for the specified match
+    // Order by turn_number first, then by created_at for proper chronological order
+    const results = await db.select()
+      .from(movesTable)
+      .where(eq(movesTable.match_id, matchId))
+      .orderBy(asc(movesTable.turn_number), asc(movesTable.created_at))
+      .execute();
+
+    return results;
+  } catch (error) {
+    console.error('Failed to fetch moves:', error);
+    throw error;
+  }
 };

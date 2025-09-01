@@ -1,21 +1,49 @@
+import { db } from '../db';
+import { usersTable } from '../db/schema';
 import { type CreateUserInput, type AuthResponse } from '../schema';
+import { hash } from 'bcrypt';
+import jwt from 'jsonwebtoken';
+
+const SALT_ROUNDS = 12;
+const JWT_SECRET = process.env['JWT_SECRET'] || 'fallback-secret-key';
 
 export const createUser = async (input: CreateUserInput): Promise<AuthResponse> => {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is creating a new user account with hashed password,
-  // generating JWT token, and returning user data with auth token.
-  return Promise.resolve({
-    user: {
-      id: 0,
-      email: input.email,
-      username: input.username,
-      password_hash: '', // Will be properly hashed
-      elo_rating: 1200,
-      wins: 0,
-      losses: 0,
-      created_at: new Date(),
-      updated_at: new Date()
-    },
-    token: 'placeholder_jwt_token'
-  });
+  try {
+    // Hash the password
+    const password_hash = await hash(input.password, SALT_ROUNDS);
+
+    // Insert user record
+    const result = await db.insert(usersTable)
+      .values({
+        email: input.email,
+        username: input.username,
+        password_hash,
+        elo_rating: 1200,
+        wins: 0,
+        losses: 0
+      })
+      .returning()
+      .execute();
+
+    const user = result[0];
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        userId: user.id, 
+        email: user.email,
+        username: user.username 
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    return {
+      user,
+      token
+    };
+  } catch (error) {
+    console.error('User creation failed:', error);
+    throw error;
+  }
 };

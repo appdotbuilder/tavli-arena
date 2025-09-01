@@ -1,16 +1,19 @@
+import { db } from '../db';
+import { chatMessagesTable } from '../db/schema';
 import { type ChatMessage } from '../schema';
+import { eq, asc } from 'drizzle-orm';
 
 export const getChatMessages = async (matchId: number): Promise<ChatMessage[]> => {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is fetching all chat messages for a specific match
-  // ordered by creation time for displaying chat history.
-  return Promise.resolve([
-    {
-      id: 1,
-      match_id: matchId,
-      user_id: 1,
-      message: 'Good luck!',
-      created_at: new Date()
-    }
-  ]);
+  try {
+    const messages = await db.select()
+      .from(chatMessagesTable)
+      .where(eq(chatMessagesTable.match_id, matchId))
+      .orderBy(asc(chatMessagesTable.created_at))
+      .execute();
+
+    return messages;
+  } catch (error) {
+    console.error('Failed to fetch chat messages:', error);
+    throw error;
+  }
 };
